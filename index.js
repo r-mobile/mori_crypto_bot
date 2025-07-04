@@ -29,7 +29,7 @@ async function getMoriPrice() {
   try {
     // Используем CoinGecko API для получения цены
     const response = await axios.get(
-      'https://api.coingecko.com/api/v3/simple/price?ids=mori&vs_currencies=usd&include_24hr_change=true'
+      'https://api.coingecko.com/api/v3/simple/price?ids=mori-coin&vs_currencies=usd&include_24hr_change=true'
     );
     
     if (response.data && response.data.mori) {
