@@ -74,8 +74,23 @@ ${emoji} *$MORI Сигнал!*
 #MORI #memecoin #crypto
   `;
   
+  const alertKeyboard = {
+    inline_keyboard: [
+      [
+        { text: '🔄 Обновить цену', callback_data: 'price' },
+        { text: '⚙️ Настройки', callback_data: 'settings' }
+      ],
+      [
+        { text: '🔕 Выключить алерты', callback_data: 'alerts_menu' }
+      ]
+    ]
+  };
+  
   try {
-    await bot.sendMessage(chatId, message, { parse_mode: 'Markdown' });
+    await bot.sendMessage(chatId, message, { 
+      parse_mode: 'Markdown',
+      reply_markup: alertKeyboard
+    });
   } catch (error) {
     console.error('Error sending message:', error);
   }
@@ -107,6 +122,83 @@ async function monitorPrice() {
   priceHistory.set('lastUpdate', Date.now());
 }
 
+// Функция создания основного меню
+function getMainMenuKeyboard() {
+  return {
+    inline_keyboard: [
+      [
+        { text: '💰 Цена $MORI', callback_data: 'price' },
+        { text: '⚙️ Настройки', callback_data: 'settings' }
+      ],
+      [
+        { text: '🔔 Уведомления', callback_data: 'alerts_menu' },
+        { text: '📊 Установить порог', callback_data: 'threshold_menu' }
+      ],
+      [
+        { text: '⚡ Быстрые действия', callback_data: 'quick_actions' }
+      ],
+      [
+        { text: '❓ Помощь', callback_data: 'help' },
+        { text: '🔄 Обновить', callback_data: 'refresh' }
+      ]
+    ]
+  };
+}
+
+// Функция создания меню уведомлений
+function getAlertsMenuKeyboard(alertsEnabled) {
+  return {
+    inline_keyboard: [
+      [
+        { text: alertsEnabled ? '🔕 Выключить' : '🔔 Включить', callback_data: 'toggle_alerts' }
+      ],
+      [
+        { text: '◀️ Назад', callback_data: 'back_to_main' }
+      ]
+    ]
+  };
+}
+
+// Функция создания меню порогов
+function getThresholdMenuKeyboard() {
+  return {
+    inline_keyboard: [
+      [
+        { text: '1%', callback_data: 'threshold_1' },
+        { text: '3%', callback_data: 'threshold_3' },
+        { text: '5%', callback_data: 'threshold_5' }
+      ],
+      [
+        { text: '10%', callback_data: 'threshold_10' },
+        { text: '15%', callback_data: 'threshold_15' },
+        { text: '20%', callback_data: 'threshold_20' }
+      ],
+      [
+        { text: '◀️ Назад', callback_data: 'back_to_main' }
+      ]
+    ]
+  };
+}
+
+// Функция создания меню быстрых действий
+function getQuickActionsKeyboard() {
+  return {
+    inline_keyboard: [
+      [
+        { text: '🔔 Вкл уведомления + 5%', callback_data: 'quick_alerts_5' },
+        { text: '🔔 Вкл уведомления + 10%', callback_data: 'quick_alerts_10' }
+      ],
+      [
+        { text: '🔕 Выключить все', callback_data: 'quick_disable_all' },
+        { text: '⚡ Супер режим (1%)', callback_data: 'quick_super_mode' }
+      ],
+      [
+        { text: '◀️ Назад', callback_data: 'back_to_main' }
+      ]
+    ]
+  };
+}
+
 // Команды бота
 bot.onText(/\/start/, async (msg) => {
   const chatId = msg.chat.id;
@@ -120,23 +212,103 @@ bot.onText(/\/start/, async (msg) => {
 
 Я буду отслеживать цену мемкоина $MORI и отправлять вам сигналы при значительных изменениях.
 
-📋 *Доступные команды:*
-/price - Текущая цена $MORI
-/settings - Настройки уведомлений
-/alerts on/off - Включить/выключить уведомления
-/threshold [число] - Установить порог уведомлений (%)
-/help - Помощь
+Используйте кнопки ниже для управления ботом:
 
-🚀 Начинаем мониторинг!
+🚀 *Начинаем мониторинг!*
   `;
   
-  await bot.sendMessage(chatId, welcomeMessage, { parse_mode: 'Markdown' });
+  await bot.sendMessage(chatId, welcomeMessage, { 
+    parse_mode: 'Markdown',
+    reply_markup: getMainMenuKeyboard()
+  });
 });
 
-bot.onText(/\/price/, async (msg) => {
+// Обработчик callback запросов (нажатий кнопок)
+bot.on('callback_query', async (callbackQuery) => {
+  const msg = callbackQuery.message;
   const chatId = msg.chat.id;
+  const messageId = msg.message_id;
+  const data = callbackQuery.data;
   
-  await bot.sendMessage(chatId, '⏳ Получаю актуальную цену...');
+  // Подтверждаем получение callback
+  await bot.answerCallbackQuery(callbackQuery.id);
+  
+  if (!users.has(chatId)) {
+    users.set(chatId, { ...DEFAULT_SETTINGS });
+  }
+  
+  const settings = users.get(chatId);
+  
+  switch(data) {
+    case 'price':
+      await handlePriceButton(chatId, messageId);
+      break;
+      
+    case 'settings':
+      await handleSettingsButton(chatId, messageId, settings);
+      break;
+      
+    case 'alerts_menu':
+      await handleAlertsMenuButton(chatId, messageId, settings);
+      break;
+      
+    case 'threshold_menu':
+      await handleThresholdMenuButton(chatId, messageId);
+      break;
+      
+    case 'toggle_alerts':
+      await handleToggleAlertsButton(chatId, messageId, settings);
+      break;
+      
+    case 'help':
+      await handleHelpButton(chatId, messageId);
+      break;
+      
+    case 'refresh':
+      await handleRefreshButton(chatId, messageId);
+      break;
+      
+    case 'quick_actions':
+      await handleQuickActionsButton(chatId, messageId);
+      break;
+      
+    case 'quick_alerts_5':
+      await handleQuickAlertsButton(chatId, messageId, 5);
+      break;
+      
+    case 'quick_alerts_10':
+      await handleQuickAlertsButton(chatId, messageId, 10);
+      break;
+      
+    case 'quick_disable_all':
+      await handleQuickDisableAllButton(chatId, messageId);
+      break;
+      
+    case 'quick_super_mode':
+      await handleQuickSuperModeButton(chatId, messageId);
+      break;
+      
+    case 'back_to_main':
+      await handleBackToMainButton(chatId, messageId);
+      break;
+      
+    default:
+      // Обработка порогов
+      if (data.startsWith('threshold_')) {
+        const threshold = parseInt(data.replace('threshold_', ''));
+        await handleThresholdButton(chatId, messageId, threshold, settings);
+      }
+      break;
+  }
+});
+
+// Функции обработки кнопок
+async function handlePriceButton(chatId, messageId) {
+  // Показываем индикатор загрузки
+  await bot.editMessageText('⏳ Получаю актуальную цену...', {
+    chat_id: chatId,
+    message_id: messageId
+  });
   
   const priceData = await getMoriPrice();
   
@@ -148,19 +320,25 @@ bot.onText(/\/price/, async (msg) => {
 📊 Изменение за 24ч: ${priceData.change24h.toFixed(2)}%
 ⏰ Обновлено: ${new Date().toLocaleString('ru-RU')}
 
-${priceData.change24h > 0 ? '🚀' : '📉'} ${priceData.change24h > 0 ? 'Рост' : 'Падение'}
+${priceData.change24h > 0 ? '🚀 Рост' : '📉 Падение'}
     `;
     
-    await bot.sendMessage(chatId, message, { parse_mode: 'Markdown' });
+    await bot.editMessageText(message, {
+      chat_id: chatId,
+      message_id: messageId,
+      parse_mode: 'Markdown',
+      reply_markup: getMainMenuKeyboard()
+    });
   } else {
-    await bot.sendMessage(chatId, '❌ Не удалось получить данные о цене. Попробуйте позже.');
+    await bot.editMessageText('❌ Не удалось получить данные о цене. Попробуйте позже.', {
+      chat_id: chatId,
+      message_id: messageId,
+      reply_markup: getMainMenuKeyboard()
+    });
   }
-});
+}
 
-bot.onText(/\/settings/, async (msg) => {
-  const chatId = msg.chat.id;
-  const settings = users.get(chatId) || { ...DEFAULT_SETTINGS };
-  
+async function handleSettingsButton(chatId, messageId, settings) {
   const message = `
 ⚙️ *Настройки уведомлений*
 
@@ -168,13 +346,271 @@ bot.onText(/\/settings/, async (msg) => {
 📊 Порог уведомлений: ${settings.priceChangeThreshold}%
 ⏱️ Интервал проверки: ${settings.checkInterval / 1000} сек
 
-*Команды для изменения:*
-/alerts on - Включить уведомления
-/alerts off - Выключить уведомления
-/threshold [число] - Изменить порог (например: /threshold 10)
+Используйте кнопки для изменения настроек.
   `;
   
-  await bot.sendMessage(chatId, message, { parse_mode: 'Markdown' });
+  await bot.editMessageText(message, {
+    chat_id: chatId,
+    message_id: messageId,
+    parse_mode: 'Markdown',
+    reply_markup: getMainMenuKeyboard()
+  });
+}
+
+async function handleAlertsMenuButton(chatId, messageId, settings) {
+  const message = `
+🔔 *Управление уведомлениями*
+
+Текущий статус: ${settings.alerts ? 'Включены ✅' : 'Выключены ❌'}
+
+Нажмите кнопку ниже для изменения:
+  `;
+  
+  await bot.editMessageText(message, {
+    chat_id: chatId,
+    message_id: messageId,
+    parse_mode: 'Markdown',
+    reply_markup: getAlertsMenuKeyboard(settings.alerts)
+  });
+}
+
+async function handleThresholdMenuButton(chatId, messageId) {
+  const message = `
+📊 *Установка порога уведомлений*
+
+Выберите процент изменения цены, при котором вы хотите получать уведомления:
+
+Чем меньше процент - тем чаще уведомления.
+  `;
+  
+  await bot.editMessageText(message, {
+    chat_id: chatId,
+    message_id: messageId,
+    parse_mode: 'Markdown',
+    reply_markup: getThresholdMenuKeyboard()
+  });
+}
+
+async function handleToggleAlertsButton(chatId, messageId, settings) {
+  settings.alerts = !settings.alerts;
+  users.set(chatId, settings);
+  
+  const message = settings.alerts 
+    ? '🔔 Уведомления включены!' 
+    : '🔕 Уведомления выключены!';
+  
+  await bot.editMessageText(message, {
+    chat_id: chatId,
+    message_id: messageId,
+    reply_markup: getAlertsMenuKeyboard(settings.alerts)
+  });
+}
+
+async function handleThresholdButton(chatId, messageId, threshold, settings) {
+  settings.priceChangeThreshold = threshold;
+  users.set(chatId, settings);
+  
+  const message = `✅ Порог уведомлений установлен: ${threshold}%
+  
+Теперь вы будете получать уведомления при изменении цены $MORI на ${threshold}% или более.`;
+  
+  await bot.editMessageText(message, {
+    chat_id: chatId,
+    message_id: messageId,
+    reply_markup: getMainMenuKeyboard()
+  });
+}
+
+async function handleHelpButton(chatId, messageId) {
+  const helpMessage = `
+🆘 *Помощь по $MORI Bot*
+
+🤖 *Что умеет бот:*
+• Отслеживает цену $MORI в реальном времени
+• Отправляет уведомления при изменении цены
+• Позволяет настраивать пороги уведомлений
+• Показывает текущую цену и изменения за 24ч
+
+🔧 *Как использовать:*
+1. Нажмите "💰 Цена $MORI" для получения актуальной цены
+2. Используйте "⚙️ Настройки" для просмотра текущих параметров
+3. В "🔔 Уведомления" включите/выключите алерты
+4. В "📊 Установить порог" выберите процент для уведомлений
+
+💡 *Рекомендации:*
+• Для мемкоинов оптимальный порог 5-10%
+• Слишком низкий порог = много уведомлений
+• Слишком высокий порог = можете пропустить движение
+
+🤖 Бот автоматически проверяет цену каждую минуту
+  `;
+  
+  await bot.editMessageText(helpMessage, {
+    chat_id: chatId,
+    message_id: messageId,
+    parse_mode: 'Markdown',
+    reply_markup: getMainMenuKeyboard()
+  });
+}
+
+async function handleRefreshButton(chatId, messageId) {
+  const message = `
+🔄 *Меню обновлено*
+
+Выберите действие:
+  `;
+  
+  await bot.editMessageText(message, {
+    chat_id: chatId,
+    message_id: messageId,
+    parse_mode: 'Markdown',
+    reply_markup: getMainMenuKeyboard()
+  });
+}
+
+async function handleBackToMainButton(chatId, messageId) {
+  const message = `
+🤖 *$MORI Bot - Главное меню*
+
+Выберите действие:
+  `;
+  
+  await bot.editMessageText(message, {
+    chat_id: chatId,
+    message_id: messageId,
+    parse_mode: 'Markdown',
+    reply_markup: getMainMenuKeyboard()
+  });
+}
+
+// Функции для быстрых действий
+async function handleQuickActionsButton(chatId, messageId) {
+  const message = `
+⚡ *Быстрые действия*
+
+Выберите готовую настройку:
+
+🔔 *Включить уведомления + порог* - быстрая настройка
+🔕 *Выключить все* - отключить все уведомления
+⚡ *Супер режим* - максимальная чувствительность (1%)
+  `;
+  
+  await bot.editMessageText(message, {
+    chat_id: chatId,
+    message_id: messageId,
+    parse_mode: 'Markdown',
+    reply_markup: getQuickActionsKeyboard()
+  });
+}
+
+async function handleQuickAlertsButton(chatId, messageId, threshold) {
+  if (!users.has(chatId)) {
+    users.set(chatId, { ...DEFAULT_SETTINGS });
+  }
+  
+  const settings = users.get(chatId);
+  settings.alerts = true;
+  settings.priceChangeThreshold = threshold;
+  users.set(chatId, settings);
+  
+  const message = `
+✅ *Быстрая настройка применена!*
+
+🔔 Уведомления: Включены
+📊 Порог: ${threshold}%
+
+Теперь вы будете получать уведомления при изменении цены $MORI на ${threshold}% или более.
+  `;
+  
+  await bot.editMessageText(message, {
+    chat_id: chatId,
+    message_id: messageId,
+    parse_mode: 'Markdown',
+    reply_markup: getMainMenuKeyboard()
+  });
+}
+
+async function handleQuickDisableAllButton(chatId, messageId) {
+  if (!users.has(chatId)) {
+    users.set(chatId, { ...DEFAULT_SETTINGS });
+  }
+  
+  const settings = users.get(chatId);
+  settings.alerts = false;
+  users.set(chatId, settings);
+  
+  const message = `
+🔕 *Все уведомления выключены*
+
+Вы больше не будете получать уведомления о изменении цены $MORI.
+
+Для включения используйте кнопку "🔔 Уведомления" в главном меню.
+  `;
+  
+  await bot.editMessageText(message, {
+    chat_id: chatId,
+    message_id: messageId,
+    parse_mode: 'Markdown',
+    reply_markup: getMainMenuKeyboard()
+  });
+}
+
+async function handleQuickSuperModeButton(chatId, messageId) {
+  if (!users.has(chatId)) {
+    users.set(chatId, { ...DEFAULT_SETTINGS });
+  }
+  
+  const settings = users.get(chatId);
+  settings.alerts = true;
+  settings.priceChangeThreshold = 1;
+  users.set(chatId, settings);
+  
+  const message = `
+⚡ *Супер режим активирован!*
+
+🔔 Уведомления: Включены
+📊 Порог: 1% (максимальная чувствительность)
+
+⚠️ *Внимание:* В этом режиме вы будете получать много уведомлений, так как мемкоины очень волатильны.
+
+Рекомендуется для активных трейдеров.
+  `;
+  
+  await bot.editMessageText(message, {
+    chat_id: chatId,
+    message_id: messageId,
+    parse_mode: 'Markdown',
+    reply_markup: getMainMenuKeyboard()
+  });
+}
+
+// Команды для совместимости (короткие версии)
+bot.onText(/\/price/, async (msg) => {
+  const chatId = msg.chat.id;
+  const priceData = await getMoriPrice();
+  
+  if (priceData) {
+    const message = `💰 $${priceData.price.toFixed(8)} (${priceData.change24h.toFixed(2)}%)`;
+    await bot.sendMessage(chatId, message, { reply_markup: getMainMenuKeyboard() });
+  } else {
+    await bot.sendMessage(chatId, '❌ Ошибка получения цены', { reply_markup: getMainMenuKeyboard() });
+  }
+});
+
+bot.onText(/\/menu/, async (msg) => {
+  const chatId = msg.chat.id;
+  await bot.sendMessage(chatId, '🤖 *Главное меню*', { 
+    parse_mode: 'Markdown',
+    reply_markup: getMainMenuKeyboard() 
+  });
+});
+
+// Старые команды для совместимости
+bot.onText(/\/settings/, async (msg) => {
+  const chatId = msg.chat.id;
+  await bot.sendMessage(chatId, '⚙️ Используйте кнопки для настройки:', { 
+    reply_markup: getMainMenuKeyboard() 
+  });
 });
 
 bot.onText(/\/alerts (on|off)/, async (msg, match) => {
@@ -193,7 +629,7 @@ bot.onText(/\/alerts (on|off)/, async (msg, match) => {
     ? '🔔 Уведомления включены!' 
     : '🔕 Уведомления выключены!';
   
-  await bot.sendMessage(chatId, message);
+  await bot.sendMessage(chatId, message, { reply_markup: getMainMenuKeyboard() });
 });
 
 bot.onText(/\/threshold (\d+)/, async (msg, match) => {
@@ -201,7 +637,9 @@ bot.onText(/\/threshold (\d+)/, async (msg, match) => {
   const threshold = parseInt(match[1]);
   
   if (threshold < 1 || threshold > 100) {
-    await bot.sendMessage(chatId, '❌ Порог должен быть от 1 до 100%');
+    await bot.sendMessage(chatId, '❌ Порог должен быть от 1 до 100%', { 
+      reply_markup: getMainMenuKeyboard() 
+    });
     return;
   }
   
@@ -213,36 +651,16 @@ bot.onText(/\/threshold (\d+)/, async (msg, match) => {
   settings.priceChangeThreshold = threshold;
   users.set(chatId, settings);
   
-  await bot.sendMessage(chatId, `✅ Порог уведомлений установлен: ${threshold}%`);
+  await bot.sendMessage(chatId, `✅ Порог установлен: ${threshold}%`, { 
+    reply_markup: getMainMenuKeyboard() 
+  });
 });
 
 bot.onText(/\/help/, async (msg) => {
   const chatId = msg.chat.id;
-  
-  const helpMessage = `
-🆘 *Помощь по $MORI Bot*
-
-📋 *Команды:*
-/start - Запуск бота
-/price - Текущая цена $MORI
-/settings - Просмотр настроек
-/alerts on/off - Управление уведомлениями
-/threshold [число] - Порог уведомлений (1-100%)
-/help - Эта справка
-
-🔧 *Как настроить:*
-1. Используйте /threshold [число] для установки порога
-2. Включите уведомления: /alerts on
-3. Бот будет отправлять сигналы при изменении цены
-
-💡 *Примеры:*
-\`/threshold 5\` - уведомления при изменении на 5%
-\`/alerts off\` - отключить все уведомления
-
-🤖 Бот автоматически проверяет цену каждую минуту
-  `;
-  
-  await bot.sendMessage(chatId, helpMessage, { parse_mode: 'Markdown' });
+  await bot.sendMessage(chatId, '❓ Используйте кнопки для управления ботом:', { 
+    reply_markup: getMainMenuKeyboard() 
+  });
 });
 
 // Webhook endpoint для Telegram
