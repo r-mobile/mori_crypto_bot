@@ -16,6 +16,6 @@
     "node": ">=16.0.0"
   },
   "keywords": ["telegram", "bot", "cryptocurrency", "mori", "price", "alerts"],
-  "author": "Your Name",
+  "author": "r-mobile",
   "license": "MIT"
 }
