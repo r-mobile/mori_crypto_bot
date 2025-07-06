@@ -32,17 +32,12 @@ const DEFAULT_SETTINGS = {
 
 // Функция получения цены $MORI
 async function getMoriPrice() {
-  try {
     let response = await fetchFromCoingecon();
     if(response == null) { 
       let = await fetchDexScreen(); 
     }
     return response;
-  } catch (error) {
-      console.error('Error fetching MORI price:', error.message);
-      return null;
   }
-}
 
 async function fetchFromCoingecon() {
   try {
