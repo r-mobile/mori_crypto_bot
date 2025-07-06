@@ -227,8 +227,6 @@ bot.onText(/\/start/, async (msg) => {
 bot.onText(/\/price/, async (msg) => {
   const chatId = msg.chat.id;
   
-  await bot.sendMessage(chatId, '⏳ Получаю актуальную цену...');
-  
   const priceData = await getMoriPrice();
   
   if (priceData) {
