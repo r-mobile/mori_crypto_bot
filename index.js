@@ -428,18 +428,14 @@ bot.onText(/\/targets/, async (msg) => {
   targetsText += '*Команды управления:*\n';
   targetsText += '• /pmax [цена] - установить максимум\n';
   targetsText += '• /pmin [цена] - установить минимум\n';
-  targetsText += '• /pmax 0 - отключить максимум\n';
-  targetsText += '• /pmin 0 - отключить минимум\n\n';
-  
-  targetsText += '*Примеры:*\n';
-  targetsText += '• /pmax 0.1745\n';
-  targetsText += '• /pmin 0.15';
+  targetsText += '• /pmax -1 - отключить максимум\n';
+  targetsText += '• /pmin -1 - отключить минимум\n\n';
   
   await bot.sendMessage(chatId, targetsText, { parse_mode: 'Markdown' });
 });
 
 // Команды для отключения ценовых целей
-bot.onText(/\/pmax 0/, async (msg) => {
+bot.onText(/\/pmax -1/, async (msg) => {
   const chatId = msg.chat.id;
   
   if (!users.has(chatId)) {
@@ -458,7 +454,7 @@ bot.onText(/\/pmax 0/, async (msg) => {
   await bot.sendMessage(chatId, '🚫 Максимальная цена отключена\n\nИспользуйте /targets для просмотра оставшихся целей.');
 });
 
-bot.onText(/\/pmin 0/, async (msg) => {
+bot.onText(/\/pmin- 1/, async (msg) => {
   const chatId = msg.chat.id;
   
   if (!users.has(chatId)) {
