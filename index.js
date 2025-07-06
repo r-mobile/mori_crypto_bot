@@ -39,10 +39,12 @@ async function getMoriPrice() {
       'https://api.coingecko.com/api/v3/simple/price?ids=mori-coin&vs_currencies=usd&include_24hr_change=true'
     );
     
-    if (response.data && response.data.mori) {
+    if (response.data && response.data.mori-coin) {
+      const coin = response.data.mori-coin
       return {
-        price: response.data.mori.usd,
-        change24h: response.data.mori.usd_24h_change || 0
+        price: coin.usd,
+        change24h: coin.usd_24h_change || 0,
+        capital: parseInt(coin.usd_market_cap) || 0
       };
     }
     
@@ -55,7 +57,8 @@ async function getMoriPrice() {
       const pair = dexResponse.data.pairs[0];
       return {
         price: parseFloat(pair.priceUsd),
-        change24h: parseFloat(pair.priceChange.h24) || 0
+        change24h: parseFloat(pair.priceChange.h24) || 0,
+        capital: parseInt(pair.marketCap) || 0
       };
     }
     
@@ -68,21 +71,20 @@ async function getMoriPrice() {
 
 // Функция отправки ценового алерта
 async function sendPriceTargetAlert(chatId, priceData, alertType, targetPrice) {
-  const emoji = alertType === 'max' ? '🔥' : '❄️';
+  const emoji = alertType === 'max' ? '🚀' : '⚠️';
   const direction = alertType === 'max' ? 'выше' : 'ниже';
   const title = alertType === 'max' ? 'ЦЕНА ПРОБИЛА МАКСИМУМ!' : 'ЦЕНА УПАЛА НИЖЕ МИНИМУМА!';
   
   const message = `
-${emoji} *$MORI ${title}*
+${emoji} ${title}
 
 🎯 Целевая цена: $${targetPrice}
 💰 Текущая цена: $${priceData.price.toFixed(8)}
 📊 Изменение за 24ч: ${priceData.change24h.toFixed(2)}%
+🐳 Капитализация: $${priceData.capital}
 
 ⚡ Цена стала ${direction} установленного уровня!
-
-#MORI #PriceAlert #Target
-  `;
+`;
   
   try {
     await bot.sendMessage(chatId, message, { parse_mode: 'Markdown' });
@@ -93,18 +95,17 @@ ${emoji} *$MORI ${title}*
 
 // Функция отправки уведомления о цене
 async function sendPriceAlert(chatId, priceData, changePercent) {
-  const emoji = changePercent > 0 ? '🚀' : '📉';
+  const emoji = changePercent > 0 ? '🚀' : '⚠️';
   const changeText = changePercent > 0 ? 'выросла' : 'упала';
   
   const message = `
-${emoji} *$MORI Сигнал!*
+${emoji} *Сигнал!*
 
 💰 Текущая цена: $${priceData.price.toFixed(8)}
 📊 Изменение за 24ч: ${priceData.change24h.toFixed(2)}%
+🐳 Капитализация: $${priceData.capital}
 ⚡ Изменение: ${changeText} на ${Math.abs(changePercent).toFixed(2)}%
-
-#MORI #memecoin #crypto
-  `;
+`;
   
   try {
     await bot.sendMessage(chatId, message, { parse_mode: 'Markdown' });
@@ -172,10 +173,9 @@ async function monitorPrice() {
 // Функция установки команд меню
 async function setMenuCommands() {
   const commands = [
-    { command: 'start', description: '🚀 Запуск бота' },
-    { command: 'price', description: '💰 Текущая цена $MORI' },
+    { command: 'price', description: '💰 Текущая цена' },
+    { command: 'targets', description: '🎯 Целевые значения' },
     { command: 'settings', description: '⚙️ Настройки уведомлений' },
-    { command: 'targets', description: '🎯 Мои ценовые цели' },
     { command: 'alerts', description: '🔔 Управление уведомлениями' },
     { command: 'help', description: '❓ Помощь' }
   ];
@@ -207,14 +207,7 @@ bot.onText(/\/start/, async (msg) => {
 • /targets - Ваши ценовые цели
 • /alerts - Управление уведомлениями
 • /help - Подробная помощь
-
-🎯 *Быстрая настройка ценовых целей:*
-• /pmax 0.1745 - уведомление когда цена выше $0.1745
-• /pmin 0.15 - уведомление когда цена ниже $0.15
-• /threshold 5 - уведомления при изменении на 5%
-
-🚀 Начинаем мониторинг! Используйте команды из меню ниже.
-  `;
+`;
   
   await bot.sendMessage(chatId, welcomeMessage, { parse_mode: 'Markdown' });
 });
@@ -228,16 +221,15 @@ bot.onText(/\/price/, async (msg) => {
   
   if (priceData) {
     const message = `
-💰 *$MORI Цена*
+💰 *$Цена*
 
 🔸 Текущая цена: $${priceData.price.toFixed(8)}
 📊 Изменение за 24ч: ${priceData.change24h.toFixed(2)}%
+🐳 Капитализация: $${priceData.capital}
 ⏰ Обновлено: ${new Date().toLocaleString('ru-RU')}
 
 ${priceData.change24h > 0 ? '🚀' : '📉'} ${priceData.change24h > 0 ? 'Рост' : 'Падение'}
-
-💡 Используйте /pmax или /pmin для установки ценовых целей
-    `;
+`;
     
     await bot.sendMessage(chatId, message, { parse_mode: 'Markdown' });
   } else {
@@ -361,9 +353,7 @@ bot.onText(/\/pmax ([0-9]*\.?[0-9]+)/, async (msg, match) => {
   
   await bot.sendMessage(chatId, `🎯 Максимальная цена установлена: $${maxPrice}
 
-💡 Вы получите уведомление, когда цена $MORI поднимется выше этого уровня.
-
-Используйте /targets для просмотра всех ваших целей.`);
+💡 Вы получите уведомление, когда цена $MORI поднимется выше этого уровня.`);
 });
 
 // Команда установки минимальной цены
@@ -391,9 +381,7 @@ bot.onText(/\/pmin ([0-9]*\.?[0-9]+)/, async (msg, match) => {
   
   await bot.sendMessage(chatId, `🎯 Минимальная цена установлена: $${minPrice}
 
-💡 Вы получите уведомление, когда цена $MORI упадет ниже этого уровня.
-
-Используйте /targets для просмотра всех ваших целей.`);
+💡 Вы получите уведомление, когда цена $MORI упадет ниже этого уровня.`);
 });
 
 // Команда просмотра ценовых целей
@@ -406,7 +394,7 @@ bot.onText(/\/targets/, async (msg) => {
   const priceData = await getMoriPrice();
   const currentPriceText = priceData ? `$${priceData.price.toFixed(8)}` : 'Недоступна';
   
-  let targetsText = '🎯 *Ваши ценовые цели*\n\n';
+  let targetsText = '🎯 *Целевые значения*\n\n';
   targetsText += `💰 Текущая цена: ${currentPriceText}\n\n`;
   
   if (priceAlerts.max) {
@@ -427,9 +415,7 @@ bot.onText(/\/targets/, async (msg) => {
   
   targetsText += '*Команды управления:*\n';
   targetsText += '• /pmax [цена] - установить максимум\n';
-  targetsText += '• /pmin [цена] - установить минимум\n';
-  targetsText += '• /pmax -1 - отключить максимум\n';
-  targetsText += '• /pmin -1 - отключить минимум\n\n';
+  targetsText += '• /pmin [цена] - установить минимум\n'; 
   
   await bot.sendMessage(chatId, targetsText, { parse_mode: 'Markdown' });
 });
@@ -490,30 +476,12 @@ bot.onText(/\/help/, async (msg) => {
 🔔 *Управление уведомлениями:*
 • /alerts on - включить уведомления
 • /alerts off - выключить уведомления
-• /threshold [число] - порог уведомлений (1-100%)
 
 🎯 *Ценовые цели:*
-• /pmax [цена] - уведомление когда цена выше
-• /pmin [цена] - уведомление когда цена ниже
-• /pmax 0 - отключить максимум
-• /pmin 0 - отключить минимум
-
-🔧 *Примеры использования:*
-\`/threshold 5\` - уведомления при изменении на 5%
-\`/pmax 0.1745\` - уведомление когда цена выше $0.1745
-\`/pmin 0.15\` - уведомление когда цена ниже $0.15
-\`/alerts off\` - отключить все уведомления
-
-💡 *Как работают ценовые цели:*
-• Устанавливайте целевые уровни цены
-• Получайте уведомления при достижении
-• Цели автоматически сбрасываются после срабатывания
-• Можно установить одновременно максимум и минимум
-
-🤖 Бот проверяет цену каждую минуту и отправляет уведомления мгновенно при достижении ваших целей!
-
-Все команды доступны в меню внизу экрана.
-  `;
+• /threshold [число] - порог уведомлений (1-100%)
+• /pmax [цена] - уведомление когда цена выше (-1 откл)
+• /pmin [цена] - уведомление когда цена ниже (-1 откл)
+`;
   
   await bot.sendMessage(chatId, helpMessage, { parse_mode: 'Markdown' });
 });
