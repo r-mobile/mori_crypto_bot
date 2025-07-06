@@ -53,7 +53,8 @@ async function fetchFromCoingecon() {
       return {
         price: coin.usd,
         change24h: coin.usd_24h_change || 0,
-        capital: parseInt(coin.usd_market_cap) || 0
+        capital: parseInt(coin.usd_market_cap) || 0,
+        provider: 'coingecko'
       };
     } else {
       return null;
@@ -75,7 +76,8 @@ async function fetchDexScreen() {
       return {
         price: parseFloat(pair.priceUsd),
         change24h: parseFloat(pair.priceChange.h24) || 0,
-        capital: parseInt(pair.marketCap) || 0
+        capital: parseInt(pair.marketCap) || 0,
+        provider: 'dexscreener'
       };
     } else {;
       return null
@@ -100,8 +102,8 @@ ${emoji} ${title}
 💰 Текущая цена: $${priceData.price.toFixed(8)}
 📊 Изменение за 24ч: ${priceData.change24h.toFixed(2)}%
 🐳 Капитализация: $${formatNumber(priceData.capital)}
-
-⚡ Цена стала ${direction} установленного уровня!
+⚡ Цена стала ${direction} установленного уровня!\n\n
+🏛 Поставщик: $${priceData.provider}
 `;
   
   try {
@@ -122,7 +124,8 @@ ${emoji} *Сигнал!*
 💰 Текущая цена: $${priceData.price.toFixed(8)}
 📊 Изменение за 24ч: ${priceData.change24h.toFixed(2)}%
 🐳 Капитализация: $${formatNumber(priceData.capital)}
-⚡ Изменение: ${changeText} на ${Math.abs(changePercent).toFixed(2)}%
+⚡ Изменение: ${changeText} на ${Math.abs(changePercent).toFixed(2)}%\n\n
+🏛 Поставщик: $${priceData.provider}
 `;
   
   try {
@@ -254,7 +257,8 @@ bot.onText(/\/price/, async (msg) => {
 🔸 Текущая цена: $${priceData.price.toFixed(8)}
 📊 Изменение за 24ч: ${priceData.change24h.toFixed(2)}%
 🐳 Капитализация: $${formatNumber(priceData.capital)}
-⏰ Обновлено: ${new Date().toLocaleString('ru-RU', { timeZone: 'Asia/Bishkek' })}
+⏰ Обновлено: ${new Date().toLocaleString('ru-RU', { timeZone: 'Asia/Bishkek' })}\n\n
+🏛 Поставщик: $${priceData.provider}
 
 ${priceData.change24h > 0 ? '🚀' : '📉'} ${priceData.change24h > 0 ? 'Рост' : 'Падение'}
 `;
