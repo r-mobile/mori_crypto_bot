@@ -378,7 +378,7 @@ bot.onText(/\/targets/, async (msg) => {
 });
 
 // Команды для отключения ценовых целей
-bot.onText(/\/pmax 0/, async (msg) => {
+bot.onText(/\/pmax -1/, async (msg) => {
   const chatId = msg.chat.id;
   
   if (!users.has(chatId)) {
@@ -397,7 +397,7 @@ bot.onText(/\/pmax 0/, async (msg) => {
   await bot.sendMessage(chatId, '🚫 Максимальная цена отключена');
 });
 
-bot.onText(/\/pmin 0/, async (msg) => {
+bot.onText(/\/pmin -1/, async (msg) => {
   const chatId = msg.chat.id;
   
   if (!users.has(chatId)) {
