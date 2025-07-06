@@ -81,7 +81,7 @@ ${emoji} ${title}
 🎯 Целевая цена: $${targetPrice}
 💰 Текущая цена: $${priceData.price.toFixed(8)}
 📊 Изменение за 24ч: ${priceData.change24h.toFixed(2)}%
-🐳 Капитализация: $${priceData.capital}
+🐳 Капитализация: $${formatNumber(priceData.capital)}
 
 ⚡ Цена стала ${direction} установленного уровня!
 `;
@@ -103,7 +103,7 @@ ${emoji} *Сигнал!*
 
 💰 Текущая цена: $${priceData.price.toFixed(8)}
 📊 Изменение за 24ч: ${priceData.change24h.toFixed(2)}%
-🐳 Капитализация: $${priceData.capital}
+🐳 Капитализация: $${formatNumber(priceData.capital)}
 ⚡ Изменение: ${changeText} на ${Math.abs(changePercent).toFixed(2)}%
 `;
   
@@ -112,6 +112,18 @@ ${emoji} *Сигнал!*
   } catch (error) {
     console.error('Error sending message:', error);
   }
+}
+
+// Функция форматирования больших чисел
+async function formatNumber(num) {
+  if (num >= 1e9) {
+    return (num / 1e9).toFixed(1) + 'B';
+  } else if (num >= 1e6) {
+    return (num / 1e6).toFixed(0) + 'M';
+  } else if (num >= 1e3) {
+    return (num / 1e3).toFixed(0) + 'K';
+  }
+  return num.toString();
 }
 
 // Функция мониторинга цены
@@ -225,8 +237,8 @@ bot.onText(/\/price/, async (msg) => {
 
 🔸 Текущая цена: $${priceData.price.toFixed(8)}
 📊 Изменение за 24ч: ${priceData.change24h.toFixed(2)}%
-🐳 Капитализация: $${priceData.capital}
-⏰ Обновлено: ${new Date().toLocaleString('ru-RU')}
+🐳 Капитализация: $${formatNumber(priceData.capital)}
+⏰ Обновлено: ${new Date().toLocaleString('ru-RU', { timeZone: 'Asia/Bishkek' })}
 
 ${priceData.change24h > 0 ? '🚀' : '📉'} ${priceData.change24h > 0 ? 'Рост' : 'Падение'}
 `;
