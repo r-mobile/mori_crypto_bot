@@ -40,7 +40,7 @@ async function getMoriPrice() {
     );
     
     if (response.data && response.data.mori-coin) {
-      const coin = response.data.mori-coin
+      const coin = response.data.mori-coin;
       return {
         price: coin.usd,
         change24h: coin.usd_24h_change || 0,
