@@ -36,7 +36,7 @@ async function getMoriPrice() {
     // Используем CoinGecko API для получения цены
     // Замените 'mori' на правильный ID токена в CoinGecko
     const response = await axios.get(
-      'https://api.coingecko.com/api/v3/simple/price?ids=mori-coin&vs_currencies=usd&include_24hr_change=true'
+      'https://api.coingecko.com/api/v3/simple/price?ids=mori&vs_currencies=usd&include_24hr_change=true'
     );
     
     if (response.data && response.data.mori) {
@@ -75,8 +75,8 @@ async function sendPriceTargetAlert(chatId, priceData, alertType, targetPrice) {
   const message = `
 ${emoji} *$MORI ${title}*
 
-🎯 Целевая цена: ${targetPrice}
-💰 Текущая цена: ${priceData.price.toFixed(8)}
+🎯 Целевая цена: $${targetPrice}
+💰 Текущая цена: $${priceData.price.toFixed(8)}
 📊 Изменение за 24ч: ${priceData.change24h.toFixed(2)}%
 
 ⚡ Цена стала ${direction} установленного уровня!
@@ -90,6 +90,8 @@ ${emoji} *$MORI ${title}*
     console.error('Error sending price target alert:', error);
   }
 }
+
+// Функция отправки уведомления о цене
 async function sendPriceAlert(chatId, priceData, changePercent) {
   const emoji = changePercent > 0 ? '🚀' : '📉';
   const changeText = changePercent > 0 ? 'выросла' : 'упала';
@@ -193,12 +195,40 @@ bot.onText(/\/start/, async (msg) => {
 🚀 Начинаем мониторинг!
   `;
   
-  await bot.sendMessage(chatId, welcomeMessage, { parse_mode: 'Markdown' });
+  const keyboard = {
+    inline_keyboard: [
+      [
+        { text: '💰 Получить цену', callback_data: 'get_price' },
+        { text: '⚙️ Настройки', callback_data: 'settings' }
+      ],
+      [
+        { text: '📈 Установить максимум', callback_data: 'set_max' },
+        { text: '📉 Установить минимум', callback_data: 'set_min' }
+      ],
+      [
+        { text: '🎯 Мои цели', callback_data: 'my_targets' },
+        { text: '🔔 Уведомления', callback_data: 'toggle_alerts' }
+      ],
+      [
+        { text: '❓ Помощь', callback_data: 'help' }
+      ]
+    ]
+  };
+  
+  await bot.sendMessage(chatId, welcomeMessage, { 
+    parse_mode: 'Markdown',
+    reply_markup: keyboard
+  });
 });
 
 bot.onText(/\/price/, async (msg) => {
   const chatId = msg.chat.id;
   
+  await sendPriceInfo(chatId);
+});
+
+// Функция отправки информации о цене с кнопками
+async function sendPriceInfo(chatId) {
   await bot.sendMessage(chatId, '⏳ Получаю актуальную цену...');
   
   const priceData = await getMoriPrice();
@@ -214,16 +244,50 @@ bot.onText(/\/price/, async (msg) => {
 ${priceData.change24h > 0 ? '🚀' : '📉'} ${priceData.change24h > 0 ? 'Рост' : 'Падение'}
     `;
     
-    await bot.sendMessage(chatId, message, { parse_mode: 'Markdown' });
+    const keyboard = {
+      inline_keyboard: [
+        [
+          { text: '🔄 Обновить', callback_data: 'get_price' },
+          { text: '📈 Установить макс', callback_data: 'set_max' }
+        ],
+        [
+          { text: '📉 Установить мин', callback_data: 'set_min' },
+          { text: '🎯 Мои цели', callback_data: 'my_targets' }
+        ],
+        [
+          { text: '🏠 Главное меню', callback_data: 'main_menu' }
+        ]
+      ]
+    };
+    
+    await bot.sendMessage(chatId, message, { 
+      parse_mode: 'Markdown',
+      reply_markup: keyboard
+    });
   } else {
-    await bot.sendMessage(chatId, '❌ Не удалось получить данные о цене. Попробуйте позже.');
+    const errorKeyboard = {
+      inline_keyboard: [
+        [
+          { text: '🔄 Попробовать снова', callback_data: 'get_price' },
+          { text: '🏠 Главное меню', callback_data: 'main_menu' }
+        ]
+      ]
+    };
+    
+    await bot.sendMessage(chatId, '❌ Не удалось получить данные о цене. Попробуйте позже.', {
+      reply_markup: errorKeyboard
+    });
   }
-});
+}
 
 bot.onText(/\/settings/, async (msg) => {
   const chatId = msg.chat.id;
+  await sendSettingsInfo(chatId);
+});
+
+// Функция отправки настроек с кнопками
+async function sendSettingsInfo(chatId) {
   const settings = users.get(chatId) || { ...DEFAULT_SETTINGS };
-  
   const priceAlerts = settings.priceAlerts || { max: null, min: null };
   
   const message = `
@@ -234,19 +298,32 @@ bot.onText(/\/settings/, async (msg) => {
 ⏱️ Интервал проверки: ${settings.checkInterval / 1000} сек
 
 🎯 *Ценовые цели:*
-📈 Максимум: ${priceAlerts.max ? `${priceAlerts.max}` : 'Не установлен'}
-📉 Минимум: ${priceAlerts.min ? `${priceAlerts.min}` : 'Не установлен'}
-
-*Команды для изменения:*
-/alerts on/off - Включить/выключить уведомления
-/threshold [число] - Изменить порог (например: /threshold 10)
-/pmax [цена] - Установить максимум (например: /pmax 0.1745)
-/pmin [цена] - Установить минимум (например: /pmin 0.15)
-/targets - Просмотр всех целей
+📈 Максимум: ${priceAlerts.max ? `$${priceAlerts.max}` : 'Не установлен'}
+📉 Минимум: ${priceAlerts.min ? `$${priceAlerts.min}` : 'Не установлен'}
   `;
   
-  await bot.sendMessage(chatId, message, { parse_mode: 'Markdown' });
-});
+  const keyboard = {
+    inline_keyboard: [
+      [
+        { text: settings.alerts ? '🔕 Выключить' : '🔔 Включить', callback_data: 'toggle_alerts' },
+        { text: '📊 Изменить порог', callback_data: 'set_threshold' }
+      ],
+      [
+        { text: '📈 Установить макс', callback_data: 'set_max' },
+        { text: '📉 Установить мин', callback_data: 'set_min' }
+      ],
+      [
+        { text: '🎯 Мои цели', callback_data: 'my_targets' },
+        { text: '🏠 Главное меню', callback_data: 'main_menu' }
+      ]
+    ]
+  };
+  
+  await bot.sendMessage(chatId, message, { 
+    parse_mode: 'Markdown',
+    reply_markup: keyboard
+  });
+}
 
 bot.onText(/\/alerts (on|off)/, async (msg, match) => {
   const chatId = msg.chat.id;
@@ -310,7 +387,7 @@ bot.onText(/\/pmax ([0-9]*\.?[0-9]+)/, async (msg, match) => {
   settings.priceAlerts.maxTriggered = false; // Сбрасываем флаг
   users.set(chatId, settings);
   
-  await bot.sendMessage(chatId, `🎯 Максимальная цена установлена: ${maxPrice}\n\n💡 Вы получите уведомление, когда цена $MORI поднимется выше этого уровня.`);
+  await bot.sendMessage(chatId, `🎯 Максимальная цена установлена: $${maxPrice}\n\n💡 Вы получите уведомление, когда цена $MORI поднимется выше этого уровня.`);
 });
 
 // Команда установки минимальной цены
@@ -336,25 +413,30 @@ bot.onText(/\/pmin ([0-9]*\.?[0-9]+)/, async (msg, match) => {
   settings.priceAlerts.minTriggered = false; // Сбрасываем флаг
   users.set(chatId, settings);
   
-  await bot.sendMessage(chatId, `🎯 Минимальная цена установлена: ${minPrice}\n\n💡 Вы получите уведомление, когда цена $MORI упадет ниже этого уровня.`);
+  await bot.sendMessage(chatId, `🎯 Минимальная цена установлена: $${minPrice}\n\n💡 Вы получите уведомление, когда цена $MORI упадет ниже этого уровня.`);
 });
 
 // Команда просмотра ценовых целей
 bot.onText(/\/targets/, async (msg) => {
   const chatId = msg.chat.id;
+  await sendTargetsInfo(chatId);
+});
+
+// Функция отправки информации о целях с кнопками
+async function sendTargetsInfo(chatId) {
   const settings = users.get(chatId) || { ...DEFAULT_SETTINGS };
   const priceAlerts = settings.priceAlerts || { max: null, min: null };
   
   // Получаем текущую цену для сравнения
   const priceData = await getMoriPrice();
-  const currentPriceText = priceData ? `${priceData.price.toFixed(8)}` : 'Недоступна';
+  const currentPriceText = priceData ? `$${priceData.price.toFixed(8)}` : 'Недоступна';
   
   let targetsText = '🎯 *Ваши ценовые цели*\n\n';
   targetsText += `💰 Текущая цена: ${currentPriceText}\n\n`;
   
   if (priceAlerts.max) {
     const distance = priceData ? ((priceAlerts.max - priceData.price) / priceData.price * 100).toFixed(2) : '—';
-    targetsText += `📈 Максимум: ${priceAlerts.max}\n`;
+    targetsText += `📈 Максимум: $${priceAlerts.max}\n`;
     targetsText += `   ${distance !== '—' ? (distance > 0 ? `↗️ +${distance}%` : `✅ Достигнут`) : ''}\n\n`;
   } else {
     targetsText += '📈 Максимум: Не установлен\n\n';
@@ -362,23 +444,46 @@ bot.onText(/\/targets/, async (msg) => {
   
   if (priceAlerts.min) {
     const distance = priceData ? ((priceAlerts.min - priceData.price) / priceData.price * 100).toFixed(2) : '—';
-    targetsText += `📉 Минимум: ${priceAlerts.min}\n`;
+    targetsText += `📉 Минимум: $${priceAlerts.min}\n`;
     targetsText += `   ${distance !== '—' ? (distance < 0 ? `↘️ ${distance}%` : `✅ Достигнут`) : ''}\n\n`;
   } else {
     targetsText += '📉 Минимум: Не установлен\n\n';
   }
   
-  targetsText += '*Команды управления:*\n';
-  targetsText += '/pmax [цена] - Установить максимум\n';
-  targetsText += '/pmin [цена] - Установить минимум\n';
-  targetsText += '/pmax 0 - Отключить максимум\n';
-  targetsText += '/pmin 0 - Отключить минимум';
+  const keyboard = {
+    inline_keyboard: [
+      [
+        { text: '📈 Установить макс', callback_data: 'set_max' },
+        { text: '📉 Установить мин', callback_data: 'set_min' }
+      ]
+    ]
+  };
   
-  await bot.sendMessage(chatId, targetsText, { parse_mode: 'Markdown' });
-});
+  // Добавляем кнопки для отключения, если цели установлены
+  if (priceAlerts.max || priceAlerts.min) {
+    const removeButtons = [];
+    if (priceAlerts.max) {
+      removeButtons.push({ text: '🚫 Убрать макс', callback_data: 'remove_max' });
+    }
+    if (priceAlerts.min) {
+      removeButtons.push({ text: '🚫 Убрать мин', callback_data: 'remove_min' });
+    }
+    keyboard.inline_keyboard.push(removeButtons);
+  }
+  
+  keyboard.inline_keyboard.push([
+    { text: '🔄 Обновить', callback_data: 'my_targets' },
+    { text: '🏠 Главное меню', callback_data: 'main_menu' }
+  ]);
+  
+  await bot.sendMessage(chatId, targetsText, { 
+    parse_mode: 'Markdown',
+    reply_markup: keyboard
+  });
+}
 
 // Команды для отключения ценовых целей
-bot.onText(/\/pmax -1/, async (msg) => {
+bot.onText(/\/pmax 0/, async (msg) => {
   const chatId = msg.chat.id;
   
   if (!users.has(chatId)) {
@@ -397,7 +502,7 @@ bot.onText(/\/pmax -1/, async (msg) => {
   await bot.sendMessage(chatId, '🚫 Максимальная цена отключена');
 });
 
-bot.onText(/\/pmin -1/, async (msg) => {
+bot.onText(/\/pmin 0/, async (msg) => {
   const chatId = msg.chat.id;
   
   if (!users.has(chatId)) {
@@ -416,9 +521,181 @@ bot.onText(/\/pmin -1/, async (msg) => {
   await bot.sendMessage(chatId, '🚫 Минимальная цена отключена');
 });
 
-bot.onText(/\/help/, async (msg) => {
-  const chatId = msg.chat.id;
+// Обработчики callback кнопок
+bot.on('callback_query', async (callbackQuery) => {
+  const chatId = callbackQuery.message.chat.id;
+  const messageId = callbackQuery.message.message_id;
+  const data = callbackQuery.data;
   
+  // Отвечаем на callback query чтобы убрать "загрузку"
+  await bot.answerCallbackQuery(callbackQuery.id);
+  
+  try {
+    switch (data) {
+      case 'get_price':
+        await sendPriceInfo(chatId);
+        break;
+        
+      case 'settings':
+        await sendSettingsInfo(chatId);
+        break;
+        
+      case 'my_targets':
+        await sendTargetsInfo(chatId);
+        break;
+        
+      case 'toggle_alerts':
+        await toggleAlerts(chatId);
+        break;
+        
+      case 'set_max':
+        await bot.sendMessage(chatId, '📈 *Установка максимальной цены*\n\nОтправьте цену в формате: /pmax 0.1745\n\nИли введите просто число, например: 0.1745', { parse_mode: 'Markdown' });
+        // Устанавливаем состояние ожидания ввода
+        setUserState(chatId, 'waiting_max_price');
+        break;
+        
+      case 'set_min':
+        await bot.sendMessage(chatId, '📉 *Установка минимальной цены*\n\nОтправьте цену в формате: /pmin 0.15\n\nИли введите просто число, например: 0.15', { parse_mode: 'Markdown' });
+        // Устанавливаем состояние ожидания ввода
+        setUserState(chatId, 'waiting_min_price');
+        break;
+        
+      case 'set_threshold':
+        await bot.sendMessage(chatId, '📊 *Установка порога уведомлений*\n\nОтправьте процент в формате: /threshold 5\n\nИли введите просто число от 1 до 100, например: 5', { parse_mode: 'Markdown' });
+        setUserState(chatId, 'waiting_threshold');
+        break;
+        
+      case 'remove_max':
+        await removeMaxPrice(chatId);
+        break;
+        
+      case 'remove_min':
+        await removeMinPrice(chatId);
+        break;
+        
+      case 'main_menu':
+        await showMainMenu(chatId);
+        break;
+        
+      case 'help':
+        await sendHelpMessage(chatId);
+        break;
+    }
+  } catch (error) {
+    console.error('Error handling callback query:', error);
+    await bot.sendMessage(chatId, '❌ Произошла ошибка. Попробуйте еще раз.');
+  }
+});
+
+// Хранилище состояний пользователей
+const userStates = new Map();
+
+function setUserState(chatId, state) {
+  userStates.set(chatId, state);
+  // Автоматически сбрасываем состояние через 5 минут
+  setTimeout(() => {
+    userStates.delete(chatId);
+  }, 5 * 60 * 1000);
+}
+
+function getUserState(chatId) {
+  return userStates.get(chatId);
+}
+
+// Функция переключения уведомлений
+async function toggleAlerts(chatId) {
+  if (!users.has(chatId)) {
+    users.set(chatId, { ...DEFAULT_SETTINGS });
+  }
+  
+  const settings = users.get(chatId);
+  settings.alerts = !settings.alerts;
+  users.set(chatId, settings);
+  
+  const message = settings.alerts 
+    ? '🔔 Уведомления включены!' 
+    : '🔕 Уведомления выключены!';
+  
+  await bot.sendMessage(chatId, message);
+  
+  // Показываем обновленные настройки
+  setTimeout(() => sendSettingsInfo(chatId), 1000);
+}
+
+// Функция удаления максимальной цены
+async function removeMaxPrice(chatId) {
+  if (!users.has(chatId)) {
+    users.set(chatId, { ...DEFAULT_SETTINGS });
+  }
+  
+  const settings = users.get(chatId);
+  if (!settings.priceAlerts) {
+    settings.priceAlerts = { max: null, min: null, maxTriggered: false, minTriggered: false };
+  }
+  
+  settings.priceAlerts.max = null;
+  settings.priceAlerts.maxTriggered = false;
+  users.set(chatId, settings);
+  
+  await bot.sendMessage(chatId, '🚫 Максимальная цена удалена');
+  setTimeout(() => sendTargetsInfo(chatId), 1000);
+}
+
+// Функция удаления минимальной цены
+async function removeMinPrice(chatId) {
+  if (!users.has(chatId)) {
+    users.set(chatId, { ...DEFAULT_SETTINGS });
+  }
+  
+  const settings = users.get(chatId);
+  if (!settings.priceAlerts) {
+    settings.priceAlerts = { max: null, min: null, maxTriggered: false, minTriggered: false };
+  }
+  
+  settings.priceAlerts.min = null;
+  settings.priceAlerts.minTriggered = false;
+  users.set(chatId, settings);
+  
+  await bot.sendMessage(chatId, '🚫 Минимальная цена удалена');
+  setTimeout(() => sendTargetsInfo(chatId), 1000);
+}
+
+// Функция показа главного меню
+async function showMainMenu(chatId) {
+  const welcomeMessage = `
+🤖 *$MORI Bot - Главное меню*
+
+Выберите действие с помощью кнопок ниже:
+  `;
+  
+  const keyboard = {
+    inline_keyboard: [
+      [
+        { text: '💰 Получить цену', callback_data: 'get_price' },
+        { text: '⚙️ Настройки', callback_data: 'settings' }
+      ],
+      [
+        { text: '📈 Установить максимум', callback_data: 'set_max' },
+        { text: '📉 Установить минимум', callback_data: 'set_min' }
+      ],
+      [
+        { text: '🎯 Мои цели', callback_data: 'my_targets' },
+        { text: '🔔 Уведомления', callback_data: 'toggle_alerts' }
+      ],
+      [
+        { text: '❓ Помощь', callback_data: 'help' }
+      ]
+    ]
+  };
+  
+  await bot.sendMessage(chatId, welcomeMessage, { 
+    parse_mode: 'Markdown',
+    reply_markup: keyboard
+  });
+}
+
+// Функция отправки справки
+async function sendHelpMessage(chatId) {
   const helpMessage = `
 🆘 *Помощь по $MORI Bot*
 
@@ -453,7 +730,120 @@ bot.onText(/\/help/, async (msg) => {
 🤖 Бот проверяет цену каждую минуту и отправляет уведомления мгновенно при достижении ваших целей!
   `;
   
-  await bot.sendMessage(chatId, helpMessage, { parse_mode: 'Markdown' });
+  const keyboard = {
+    inline_keyboard: [
+      [
+        { text: '🏠 Главное меню', callback_data: 'main_menu' }
+      ]
+    ]
+  };
+  
+  await bot.sendMessage(chatId, helpMessage, { 
+    parse_mode: 'Markdown',
+    reply_markup: keyboard
+  });
+}
+
+// Обработчик текстовых сообщений для состояний ожидания ввода
+bot.on('message', async (msg) => {
+  const chatId = msg.chat.id;
+  const text = msg.text;
+  const state = getUserState(chatId);
+  
+  if (!state || !text) return;
+  
+  // Игнорируем команды
+  if (text.startsWith('/')) return;
+  
+  const value = parseFloat(text);
+  
+  if (isNaN(value) || value < 0) {
+    await bot.sendMessage(chatId, '❌ Неверный формат. Введите положительное число.');
+    return;
+  }
+  
+  try {
+    switch (state) {
+      case 'waiting_max_price':
+        await setMaxPriceValue(chatId, value);
+        break;
+      case 'waiting_min_price':
+        await setMinPriceValue(chatId, value);
+        break;
+      case 'waiting_threshold':
+        await setThresholdValue(chatId, Math.round(value));
+        break;
+    }
+    
+    // Удаляем состояние после обработки
+    userStates.delete(chatId);
+  } catch (error) {
+    console.error('Error processing user input:', error);
+    await bot.sendMessage(chatId, '❌ Произошла ошибка. Попробуйте еще раз.');
+  }
+});
+
+// Функции для установки значений
+async function setMaxPriceValue(chatId, price) {
+  if (!users.has(chatId)) {
+    users.set(chatId, { ...DEFAULT_SETTINGS });
+  }
+  
+  const settings = users.get(chatId);
+  if (!settings.priceAlerts) {
+    settings.priceAlerts = { max: null, min: null, maxTriggered: false, minTriggered: false };
+  }
+  
+  settings.priceAlerts.max = price;
+  settings.priceAlerts.maxTriggered = false;
+  users.set(chatId, settings);
+  
+  await bot.sendMessage(chatId, `✅ Максимальная цена установлена: ${price}\n\n💡 Вы получите уведомление, когда цена $MORI поднимется выше этого уровня.`);
+}
+
+async function setMinPriceValue(chatId, price) {
+  if (!users.has(chatId)) {
+    users.set(chatId, { ...DEFAULT_SETTINGS });
+  }
+  
+  const settings = users.get(chatId);
+  if (!settings.priceAlerts) {
+    settings.priceAlerts = { max: null, min: null, maxTriggered: false, minTriggered: false };
+  }
+  
+  settings.priceAlerts.min = price;
+  settings.priceAlerts.minTriggered = false;
+  users.set(chatId, settings);
+  
+  await bot.sendMessage(chatId, `✅ Минимальная цена установлена: ${price}\n\n💡 Вы получите уведомление, когда цена $MORI упадет ниже этого уровня.`);
+}
+
+async function setThresholdValue(chatId, threshold) {
+  if (threshold < 1 || threshold > 100) {
+    await bot.sendMessage(chatId, '❌ Порог должен быть от 1 до 100%');
+    return;
+  }
+  
+  if (!users.has(chatId)) {
+    users.set(chatId, { ...DEFAULT_SETTINGS });
+  }
+  
+  const settings = users.get(chatId);
+  settings.priceChangeThreshold = threshold;
+  users.set(chatId, settings);
+  
+  await bot.sendMessage(chatId, `✅ Порог уведомлений установлен: ${threshold}%`);
+}
+
+bot.onText(/\/help/, async (msg) => {
+  const chatId = msg.chat.id;
+  await sendHelpMessage(chatId);
+});
+
+// Команда для показа главного меню
+bot.onText(/\/menu/, async (msg) => {
+  const chatId = msg.chat.id;
+  await showMainMenu(chatId);
 });
 
 // Webhook endpoint для Telegram
