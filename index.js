@@ -39,8 +39,8 @@ async function getMoriPrice() {
       'https://api.coingecko.com/api/v3/simple/price?ids=mori-coin&vs_currencies=usd&include_24hr_change=true'
     );
     
-    if (response.data && response.data.mori-coin) {
-      const coin = response.data.mori-coin;
+    if (response.data && response.data.coin) {
+      const coin = response.data.coin;
       return {
         price: coin.usd,
         change24h: coin.usd_24h_change || 0,
