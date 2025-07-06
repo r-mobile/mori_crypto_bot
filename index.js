@@ -115,7 +115,7 @@ ${emoji} *Сигнал!*
 }
 
 // Функция форматирования больших чисел
-async function formatNumber(num) {
+function formatNumber(num) {
   if (num >= 1e9) {
     return (num / 1e9).toFixed(1) + 'B';
   } else if (num >= 1e6) {
