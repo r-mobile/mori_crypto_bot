@@ -33,22 +33,39 @@ const DEFAULT_SETTINGS = {
 // Функция получения цены $MORI
 async function getMoriPrice() {
   try {
-    // Используем CoinGecko API для получения цены
-    // Замените 'mori' на правильный ID токена в CoinGecko
+    let response = fetchFromCoingecon();
+    if(!response) { let = fetchDexScreen(); }
+    return response;
+  } catch (error) {
+      console.error('Error fetching MORI price:', error.message);
+      return null;
+  }
+}
+
+async function fetchFromCoingecon() {
+  try {
     const response = await axios.get(
       'https://api.coingecko.com/api/v3/simple/price?ids=mori-coin&vs_currencies=usd&include_24hr_change=true&include_market_cap=true'
     );
     
     if (response.data && response.data["mori-coin"]) {
-      const mc = response.data["mori-coin"];
+      const coin = response.data["mori-coin"];
       return {
-        price: mc.usd,
-        change24h: mc.usd_24h_change || 0,
-        capital: parseInt(mc.usd_market_cap) || 0
+        price: coin.usd,
+        change24h: coin.usd_24h_change || 0,
+        capital: parseInt(coin.usd_market_cap) || 0
       };
+    } else {
+      return null;
     }
-    
-    // Альтернативно можно использовать DEXScreener API
+  } catch (error) {
+    console.error('Fail coingecko response:', error.message);
+    return null;
+  }
+}
+
+async function fetchDexScreen() {
+  try {
     const dexResponse = await axios.get(
       'https://api.dexscreener.com/latest/dex/search/?q=MORI'
     );
@@ -60,14 +77,15 @@ async function getMoriPrice() {
         change24h: parseFloat(pair.priceChange.h24) || 0,
         capital: parseInt(pair.marketCap) || 0
       };
+    } else {;
+      return null
     }
-    
-    throw new Error('No price data found');
   } catch (error) {
-    console.error('Error fetching MORI price:', error.message);
+    console.error('Fail dexscreener response:', error.message);
     return null;
   }
 }
+
 
 // Функция отправки ценового алерта
 async function sendPriceTargetAlert(chatId, priceData, alertType, targetPrice) {
@@ -226,8 +244,6 @@ bot.onText(/\/start/, async (msg) => {
 
 bot.onText(/\/price/, async (msg) => {
   const chatId = msg.chat.id;
-  
-  await bot.sendMessage(chatId, '⏳ Получаю актуальную цену...');
   
   const priceData = await getMoriPrice();
   
