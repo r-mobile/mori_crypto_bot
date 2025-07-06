@@ -102,8 +102,8 @@ ${emoji} ${title}
 💰 Текущая цена: $${priceData.price.toFixed(8)}
 📊 Изменение за 24ч: ${priceData.change24h.toFixed(2)}%
 🐳 Капитализация: $${formatNumber(priceData.capital)}
-⚡ Цена стала ${direction} установленного уровня!\n\n
-🏛 Поставщик: $${priceData.provider}
+🏛 Поставщик: $${priceData.provider}\n
+⚡ Цена стала ${direction} установленного уровня!
 `;
   
   try {
@@ -124,8 +124,8 @@ ${emoji} *Сигнал!*
 💰 Текущая цена: $${priceData.price.toFixed(8)}
 📊 Изменение за 24ч: ${priceData.change24h.toFixed(2)}%
 🐳 Капитализация: $${formatNumber(priceData.capital)}
-⚡ Изменение: ${changeText} на ${Math.abs(changePercent).toFixed(2)}%\n\n
-🏛 Поставщик: $${priceData.provider}
+⚡ Изменение: ${changeText} на ${Math.abs(changePercent).toFixed(2)}%
+🏛 Поставщик: ${priceData.provider}
 `;
   
   try {
@@ -257,8 +257,8 @@ bot.onText(/\/price/, async (msg) => {
 🔸 Текущая цена: $${priceData.price.toFixed(8)}
 📊 Изменение за 24ч: ${priceData.change24h.toFixed(2)}%
 🐳 Капитализация: $${formatNumber(priceData.capital)}
-⏰ Обновлено: ${new Date().toLocaleString('ru-RU', { timeZone: 'Asia/Bishkek' })}\n\n
-🏛 Поставщик: $${priceData.provider}
+⏰ Обновлено: ${new Date().toLocaleString('ru-RU', { timeZone: 'Asia/Bishkek' })}
+🏛 Поставщик: ${priceData.provider}
 
 ${priceData.change24h > 0 ? '🚀' : '📉'} ${priceData.change24h > 0 ? 'Рост' : 'Падение'}
 `;
