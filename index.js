@@ -34,7 +34,7 @@ const DEFAULT_SETTINGS = {
 async function getMoriPrice() {
     let response = await fetchFromCoingecon();
     if(response == null) { 
-      let = await fetchDexScreen(); 
+      response = await fetchDexScreen(); 
     }
     return response;
   }
